@@ -8,22 +8,45 @@ export interface Identifier {
   lid: string;
 }
 
+/**
+ * An Identifier specific to a record which may or may not
+ * be present in the cache.
+ *
+ * The absence of an `id` DOES NOT indicate that this
+ * Identifier is for a new client-created record as it
+ * may also indicate that it was generated for a secondary
+ * index and the primary `id` index is not yet known.
+ */
+export interface RecordIdentifier extends Identifier {
+  id: string | null;
+  type: string;
+}
+
+/**
+ * Used when an Identifier is known to be the stable version
+ *
+ * @internal
+ */
 export interface StableIdentifier extends Identifier {
   [IS_IDENTIFIER]: true;
   [DEBUG_IDENTIFIER_BUCKET]?: string;
   toString?(): string;
 }
 
-export interface RecordIdentifier extends Identifier {
-  id: string | null;
-  type: string;
-}
-
+/**
+ * Used when a RecordIdentifier is known to be the stable version
+ *
+ * @internal
+ */
 export interface StableRecordIdentifier extends StableIdentifier {
   id: string | null;
   type: string;
   [DEBUG_CLIENT_ORIGINATED]?: boolean;
 }
+
+/**
+ *
+ */
 
 /*
   A method which can expect to receive various data as its first argument

@@ -113,4 +113,8 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
       internalModel.destroyFromRecordData();
     }
   }
+
+  _hasModelFor(modelName) {
+    return this.store._hasModelFor(modelName);
+  }
 }

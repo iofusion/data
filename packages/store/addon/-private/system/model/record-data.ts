@@ -11,13 +11,13 @@ import Relationship from '../relationships/state/relationship';
 import RecordData, { ChangedAttributesHash } from '../../ts-interfaces/record-data';
 import {
   JsonApiResource,
-  JsonApiResourceIdentity,
   JsonApiBelongsToRelationship,
   JsonApiHasManyRelationship,
   AttributesHash,
 } from '../../ts-interfaces/record-data-json-api';
 import { RelationshipRecordData } from '../../ts-interfaces/relationship-record-data';
 import { RecordDataStoreWrapper } from '../../ts-interfaces/record-data-store-wrapper';
+import { RecordIdentifier } from '../../ts-interfaces/identifier';
 
 let nextBfsId = 1;
 
@@ -27,7 +27,6 @@ export default class RecordDataDefault implements RelationshipRecordData {
   __implicitRelationships: { [key: string]: Relationship } | null;
   clientId: string;
   id: string | null;
-  storeWrapper: RecordDataStoreWrapper;
   isDestroyed: boolean;
   _isNew: boolean;
   _bfsId: number;
@@ -36,18 +35,12 @@ export default class RecordDataDefault implements RelationshipRecordData {
   __data: any;
   _scheduledDestroy: any;
 
-  constructor(
-    modelName: string,
-    id: string | null,
-    clientId: string,
-    storeWrapper: RecordDataStoreWrapper
-  ) {
-    this.modelName = modelName;
+  constructor(private identifier: RecordIdentifier, public storeWrapper: RecordDataStoreWrapper) {
+    this.modelName = identifier.type;
     this.__relationships = null;
     this.__implicitRelationships = null;
-    this.clientId = clientId;
-    this.id = id;
-    this.storeWrapper = storeWrapper;
+    this.clientId = identifier.lid;
+    this.id = identifier.id;
     this.isDestroyed = false;
     this._isNew = false;
     // Used during the mark phase of unloading to avoid checking the same internal
@@ -58,12 +51,8 @@ export default class RecordDataDefault implements RelationshipRecordData {
 
   // PUBLIC API
 
-  getResourceIdentifier(): JsonApiResourceIdentity {
-    return {
-      id: this.id,
-      type: this.modelName,
-      clientId: this.clientId,
-    };
+  getResourceIdentifier(): RecordIdentifier {
+    return this.identifier;
   }
 
   pushData(data: JsonApiResource, calculateChange: boolean) {

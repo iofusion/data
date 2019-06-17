@@ -46,6 +46,7 @@ import InternalModel from './model/internal-model';
 import RecordDataDefault from './model/record-data';
 import edBackburner from './backburner';
 import promiseRecord from '../utils/promise-record';
+import { identifierCacheFor } from '../identifiers/cache';
 const badIdFormatAssertion = '`id` passed to `findRecord()` has to be non-empty string or number';
 const emberRun = emberRunLoop.backburner;
 
@@ -2789,7 +2790,12 @@ const Store = Service.extend({
   },
 
   createRecordDataFor(modelName, id, clientId, storeWrapper) {
-    return new RecordDataDefault(modelName, id, clientId, storeWrapper);
+    let identifier = identifierCacheFor(this).getOrCreateRecordIdentifier({
+      type: modelName,
+      id,
+      lid: clientId,
+    });
+    return new RecordDataDefault(identifier, storeWrapper);
   },
 
   recordDataFor(modelName, id, clientId) {
@@ -2864,12 +2870,23 @@ const Store = Service.extend({
       !existingInternalModel
     );
 
+    const identifierCache = identifierCacheFor(this);
+    let identifier;
+
     if (id === null && !clientId) {
-      clientId = this.newClientId();
+      identifier = identifierCache.createIdentifierForNewRecord({ type: modelName });
+      clientId = identifier.lid;
+    } else {
+      identifier = identifierCache.getOrCreateRecordIdentifier({
+        type: modelName,
+        id,
+        lid: clientId,
+      });
     }
+
     // lookupFactory should really return an object that creates
     // instances with the injections applied
-    let internalModel = new InternalModel(modelName, id, this, data, clientId);
+    let internalModel = new InternalModel(this, identifier);
     if (clientId) {
       this._newlyCreatedModelsFor(modelName).add(internalModel, clientId);
     }

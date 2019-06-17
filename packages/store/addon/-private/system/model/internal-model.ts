@@ -21,6 +21,8 @@ import RecordData from '../../ts-interfaces/record-data';
 import { JsonApiResource } from '../../ts-interfaces/record-data-json-api';
 import { Record } from '../../ts-interfaces/record';
 import { Dict } from '../../types';
+import { identifierCacheFor } from '../../identifiers/cache';
+import { RecordIdentifier } from '../../ts-interfaces/identifier';
 
 // move to TS hacks module that we can delete when this is no longer a necessary recast
 type ManyArray = InstanceType<typeof ManyArray>;
@@ -58,8 +60,6 @@ function extractPivotName(name) {
   return _extractPivotNameCache[name] || (_extractPivotNameCache[name] = splitOnDot(name)[0]);
 }
 
-let InternalModelReferenceId = 1;
-
 /*
   `InternalModel` is the Model class that we use internally inside Ember Data to represent models.
   Internal ED methods should only deal with `InternalModel` objects. It is a fast, plain Javascript class.
@@ -78,9 +78,8 @@ let InternalModelReferenceId = 1;
 */
 export default class InternalModel {
   id: string | null;
-  store: Store;
   modelName: string;
-  clientId: string | null;
+  clientId: string;
   __recordData: RecordData | null;
   _isDestroyed: boolean;
   isError: boolean;
@@ -105,21 +104,20 @@ export default class InternalModel {
   // we create a new ManyArray, but in the interim the retained version will be
   // updated if inverse internal models are unloaded.
   _retainedManyArrayCache: Dict<string, ManyArray> = Object.create(null);
-  _relationshipPromisesCache: Dict<string, RSVP.Promise<unknown>> = Object.create(null);
+  _relationshipPromisesCache: Dict<string, RSVP.Promise<any>> = Object.create(null);
   _relationshipProxyCache: Dict<string, PromiseManyArray | PromiseBelongsTo> = Object.create(null);
   currentState: any;
   error: any;
 
-  constructor(modelName: string, id: string | null, store, data, clientId) {
-    this.id = id;
-    this.store = store;
-    this.modelName = modelName;
-    this.clientId = clientId;
+  constructor(public store: Store, private identifier: RecordIdentifier) {
+    this.id = identifier.id;
+    this.modelName = identifier.type;
+    this.clientId = identifier.lid;
 
     this.__recordData = null;
 
     // this ensure ordered set can quickly identify this as unique
-    this[Ember.GUID_KEY] = InternalModelReferenceId++ + 'internal-model';
+    this[Ember.GUID_KEY] = identifier.lid;
 
     this._promiseProxy = null;
     this._record = null;
@@ -523,6 +521,10 @@ export default class InternalModel {
 
   getBelongsTo(key, options) {
     let resource = this._recordData.getBelongsTo(key);
+    let identifier =
+      resource && resource.data
+        ? identifierCacheFor(this.store).getOrCreateRecordIdentifier(resource.data)
+        : null;
     let relationshipMeta = this.store._relationshipMetaFor(this.modelName, null, key);
     let store = this.store;
     let parentInternalModel = this;
@@ -537,7 +539,7 @@ export default class InternalModel {
 
     if (isAsync) {
       let internalModel =
-        resource && resource.data ? store._internalModelForResource(resource.data) : null;
+        resource && resource.data ? store._internalModelForResource(identifier) : null;
 
       if (resource!._relationship!.hasFailedLoadAttempt) {
         return this._relationshipProxyCache[key];
@@ -609,7 +611,7 @@ export default class InternalModel {
     return manyArray;
   }
 
-  fetchAsyncHasMany(key, relationshipMeta, jsonApi, manyArray, options): RSVP.Promise<unknown> {
+  fetchAsyncHasMany(key, relationshipMeta, jsonApi, manyArray, options): RSVP.Promise<any> {
     // TODO @runspired follow up if parent isNew then we should not be attempting load here
     let loadingPromise = this._relationshipPromisesCache[key];
     if (loadingPromise) {
@@ -665,7 +667,7 @@ export default class InternalModel {
     kind: 'hasMany' | 'belongsTo',
     key: string,
     args: {
-      promise: RSVP.Promise<unknown>;
+      promise: RSVP.Promise<any>;
       content?: Record | ManyArray | null;
       _belongsToState?: BelongsToMetaWrapper;
     }
