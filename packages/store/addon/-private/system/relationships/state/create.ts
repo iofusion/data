@@ -1,9 +1,17 @@
 import ManyRelationship from './has-many';
 import BelongsToRelationship from './belongs-to';
-import { RelationshipRecordData } from "../../../ts-interfaces/relationship-record-data";
-import { RelationshipSchema } from "../../../ts-interfaces/record-data-schemas";
+import { RelationshipRecordData } from '../../../ts-interfaces/relationship-record-data';
+import { RelationshipSchema } from '../../../ts-interfaces/record-data-schemas';
+import Store from '../../store';
 
-function createRelationshipFor(relationshipMeta: RelationshipSchema, store: any, recordData: RelationshipRecordData, key) {
+type Store = InstanceType<typeof Store>;
+
+function createRelationshipFor(
+  relationshipMeta: RelationshipSchema,
+  store: Store,
+  recordData: RelationshipRecordData,
+  key: string
+) {
   let inverseKey = recordData.storeWrapper.inverseForRelationship(recordData.modelName, key);
   let inverseIsAsync = recordData.storeWrapper.inverseIsAsyncForRelationship(
     recordData.modelName,
@@ -24,14 +32,14 @@ function createRelationshipFor(relationshipMeta: RelationshipSchema, store: any,
 }
 
 export default class Relationships {
-  recordData: RelationshipRecordData
-  initializedRelationships: {[key: string]: BelongsToRelationship | ManyRelationship}
-  constructor(recordData) {
-    this.recordData = recordData;
+  _store: Store;
+  initializedRelationships: { [key: string]: BelongsToRelationship | ManyRelationship };
+  constructor(public recordData: RelationshipRecordData) {
     this.initializedRelationships = Object.create(null);
+    this._store = recordData.storeWrapper.store;
   }
 
-  has(key) {
+  has(key: string) {
     return !!this.initializedRelationships[key];
   }
 
@@ -42,7 +50,7 @@ export default class Relationships {
     });
   }
 
-  get(key) {
+  get(key: string) {
     let relationships = this.initializedRelationships;
     let relationship = relationships[key];
 
@@ -55,7 +63,7 @@ export default class Relationships {
       if (rel) {
         relationship = relationships[key] = createRelationshipFor(
           rel,
-          recordData.store,
+          this._store,
           recordData,
           key
         );
