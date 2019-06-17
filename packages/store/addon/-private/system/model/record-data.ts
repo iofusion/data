@@ -8,18 +8,23 @@ import coerceId from '../coerce-id';
 import BelongsToRelationship from '../relationships/state/belongs-to';
 import ManyRelationship from '../relationships/state/has-many';
 import Relationship from '../relationships/state/relationship';
-import RecordData, { ChangedAttributesHash } from '../../ts-interfaces/record-data'
-import { JsonApiResource, JsonApiResourceIdentity, JsonApiBelongsToRelationship, JsonApiHasManyRelationship, AttributesHash } from "../../ts-interfaces/record-data-json-api";
+import RecordData, { ChangedAttributesHash } from '../../ts-interfaces/record-data';
+import {
+  JsonApiResource,
+  JsonApiResourceIdentity,
+  JsonApiBelongsToRelationship,
+  JsonApiHasManyRelationship,
+  AttributesHash,
+} from '../../ts-interfaces/record-data-json-api';
 import { RelationshipRecordData } from '../../ts-interfaces/relationship-record-data';
 import { RecordDataStoreWrapper } from '../../ts-interfaces/record-data-store-wrapper';
 
 let nextBfsId = 1;
 
 export default class RecordDataDefault implements RelationshipRecordData {
-  store: any;
   modelName: string;
   __relationships: Relationships | null;
-  __implicitRelationships:{ [key: string]: Relationship } | null;
+  __implicitRelationships: { [key: string]: Relationship } | null;
   clientId: string;
   id: string | null;
   storeWrapper: RecordDataStoreWrapper;
@@ -31,8 +36,12 @@ export default class RecordDataDefault implements RelationshipRecordData {
   __data: any;
   _scheduledDestroy: any;
 
-  constructor(modelName: string, id: string | null, clientId: string, storeWrapper: RecordDataStoreWrapper, store:any) {
-    this.store = store;
+  constructor(
+    modelName: string,
+    id: string | null,
+    clientId: string,
+    storeWrapper: RecordDataStoreWrapper
+  ) {
     this.modelName = modelName;
     this.__relationships = null;
     this.__implicitRelationships = null;
@@ -117,7 +126,7 @@ export default class RecordDataDefault implements RelationshipRecordData {
       let relationshipData = data.relationships[relationshipName];
 
       if (DEBUG) {
-        let store = this.store;
+        let storeWrapper = this.storeWrapper;
         let recordData = this;
         let relationshipMeta = relationships[relationshipName];
         if (!relationshipData || !relationshipMeta) {
@@ -146,7 +155,12 @@ export default class RecordDataDefault implements RelationshipRecordData {
               )}, but ${relationshipName} is a belongsTo relationship so the value must not be an array. You should probably check your data payload or serializer.`,
               !Array.isArray(relationshipData.data)
             );
-            assertRelationshipData(store, recordData, relationshipData.data, relationshipMeta);
+            assertRelationshipData(
+              storeWrapper,
+              recordData,
+              relationshipData.data,
+              relationshipMeta
+            );
           } else if (relationshipMeta.kind === 'hasMany') {
             assert(
               `A ${
@@ -159,7 +173,7 @@ export default class RecordDataDefault implements RelationshipRecordData {
             if (Array.isArray(relationshipData.data)) {
               for (let i = 0; i < relationshipData.data.length; i++) {
                 assertRelationshipData(
-                  store,
+                  storeWrapper,
                   recordData,
                   relationshipData.data[i],
                   relationshipMeta

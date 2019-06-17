@@ -1,14 +1,25 @@
 import { RecordDataStoreWrapper as IRecordDataStoreWrapper } from '../../ts-interfaces/record-data-store-wrapper';
+import Store from '../store';
+
+type Store = InstanceType<typeof Store>;
 
 export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
-  store: any;
+  store: Store;
   _willUpdateManyArrays: boolean;
   _pendingManyArrayUpdates: string[];
 
-  constructor(store) {
+  constructor(store: Store) {
     this.store = store;
     this._willUpdateManyArrays = false;
     this._pendingManyArrayUpdates = [];
+  }
+
+  // TODO this exists just to the default recordData can
+  //  check this in debug for relationships
+  //  we can do away with this with a bit of refactoring
+  // of the relationship layer
+  _hasModelFor(modelName: string) {
+    return this.store._hasModelFor(modelName);
   }
 
   _scheduleManyArrayUpdate(modelName, id, clientId, key) {
@@ -20,7 +31,7 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
     }
 
     this._willUpdateManyArrays = true;
-    let backburner = this.store._backburner;
+    let backburner: any = this.store._backburner;
 
     backburner.join(() => {
       backburner.schedule('syncRelationships', this, this._flushPendingManyArrayUpdates);

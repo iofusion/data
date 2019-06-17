@@ -247,6 +247,11 @@ const Store = Service.extend({
   },
 
   /**
+   * EmberData specific backburner instance
+   */
+  _backburner: null,
+
+  /**
     The default adapter to use to communicate to a backend server or
     other persistence layer. This will be overridden by an application
     adapter if present.
@@ -2793,7 +2798,7 @@ const Store = Service.extend({
   },
 
   createRecordDataFor(modelName, id, clientId, storeWrapper) {
-    return new RecordDataDefault(modelName, id, clientId, storeWrapper, this);
+    return new RecordDataDefault(modelName, id, clientId, storeWrapper);
   },
 
   recordDataFor(modelName, id, clientId) {
