@@ -1,10 +1,13 @@
+import { ResourceIdentifierObject } from './json-api';
 import BelongsToRelationship from '../system/relationships/state/belongs-to';
 import ManyRelationship from '../system/relationships/state/has-many';
+
 export interface AttributesHash {
   attributes?: {
     [key: string]: any;
   };
 }
+
 export interface JsonApiResource {
   id?: string | null;
   type?: string;
@@ -14,13 +17,9 @@ export interface JsonApiResource {
   };
   meta?: any;
 }
-export interface JsonApiResourceIdentity {
-  id?: string | null;
-  type: string;
-  clientId?: string;
-}
+
 export interface JsonApiBelongsToRelationship {
-  data?: JsonApiResourceIdentity;
+  data?: ResourceIdentifierObject;
   meta?: any;
   links?: {
     [key: string]: string;
@@ -29,7 +28,7 @@ export interface JsonApiBelongsToRelationship {
   _relationship?: BelongsToRelationship;
 }
 export interface JsonApiHasManyRelationship {
-  data?: JsonApiResourceIdentity[];
+  data?: ResourceIdentifierObject[];
   meta?: any;
   links?: {
     [key: string]: string;
@@ -37,4 +36,5 @@ export interface JsonApiHasManyRelationship {
   // Private
   _relationship?: ManyRelationship;
 }
+
 export type JsonApiRelationship = JsonApiBelongsToRelationship | JsonApiHasManyRelationship;
