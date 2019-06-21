@@ -14,14 +14,6 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
     this._pendingManyArrayUpdates = [];
   }
 
-  // TODO this exists just to the default recordData can
-  //  check this in debug for relationships
-  //  we can do away with this with a bit of refactoring
-  // of the relationship layer
-  _hasModelFor(modelName: string) {
-    return this.store._hasModelFor(modelName);
-  }
-
   _scheduleManyArrayUpdate(modelName, id, clientId, key) {
     let pending = (this._pendingManyArrayUpdates = this._pendingManyArrayUpdates || []);
     pending.push(modelName, id, clientId, key);
@@ -114,7 +106,11 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
     }
   }
 
-  _hasModelFor(modelName) {
+  // TODO @runspired this exists so DefaultTecordData can
+  //  check this in DEBUG for relationships
+  //  we can do away with this with a bit of refactoring
+  //  of the relationship layer
+  _hasModelFor(modelName: string): boolean {
     return this.store._hasModelFor(modelName);
   }
 }
