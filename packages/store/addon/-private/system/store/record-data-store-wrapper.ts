@@ -4,12 +4,12 @@ import Store from '../store';
 type Store = InstanceType<typeof Store>;
 
 export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
-  store: Store;
+  _store: Store;
   _willUpdateManyArrays: boolean;
   _pendingManyArrayUpdates: string[];
 
   constructor(store: Store) {
-    this.store = store;
+    this._store = store;
     this._willUpdateManyArrays = false;
     this._pendingManyArrayUpdates = [];
   }
@@ -19,7 +19,7 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
   //  we can do away with this with a bit of refactoring
   // of the relationship layer
   _hasModelFor(modelName: string) {
-    return this.store._hasModelFor(modelName);
+    return this._store._hasModelFor(modelName);
   }
 
   _scheduleManyArrayUpdate(modelName, id, clientId, key) {
@@ -31,7 +31,7 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
     }
 
     this._willUpdateManyArrays = true;
-    let backburner: any = this.store._backburner;
+    let backburner: any = this._store._backburner;
 
     backburner.join(() => {
       backburner.schedule('syncRelationships', this, this._flushPendingManyArrayUpdates);
@@ -46,7 +46,7 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
     let pending = this._pendingManyArrayUpdates;
     this._pendingManyArrayUpdates = [];
     this._willUpdateManyArrays = false;
-    let store = this.store;
+    let store = this._store;
 
     for (let i = 0; i < pending.length; i += 4) {
       let modelName = pending[i];
@@ -59,26 +59,26 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
   }
 
   attributesDefinitionFor(modelName) {
-    return this.store._attributesDefinitionFor(modelName);
+    return this._store._attributesDefinitionFor(modelName);
   }
 
   relationshipsDefinitionFor(modelName) {
-    return this.store._relationshipsDefinitionFor(modelName);
+    return this._store._relationshipsDefinitionFor(modelName);
   }
 
   inverseForRelationship(modelName, key) {
-    let modelClass = this.store.modelFor(modelName);
-    return this.relationshipsDefinitionFor(modelName)[key]._inverseKey(this.store, modelClass);
+    let modelClass = this._store.modelFor(modelName);
+    return this.relationshipsDefinitionFor(modelName)[key]._inverseKey(this._store, modelClass);
   }
 
   // TODO Igor David cleanup
   inverseIsAsyncForRelationship(modelName, key) {
-    let modelClass = this.store.modelFor(modelName);
-    return this.relationshipsDefinitionFor(modelName)[key]._inverseIsAsync(this.store, modelClass);
+    let modelClass = this._store.modelFor(modelName);
+    return this.relationshipsDefinitionFor(modelName)[key]._inverseIsAsync(this._store, modelClass);
   }
 
   notifyPropertyChange(modelName, id, clientId, key) {
-    let internalModel = this.store._getInternalModelForId(modelName, id, clientId);
+    let internalModel = this._store._getInternalModelForId(modelName, id, clientId);
     internalModel.notifyPropertyChange(key);
   }
 
@@ -87,20 +87,20 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
   }
 
   notifyBelongsToChange(modelName, id, clientId, key) {
-    let internalModel = this.store._getInternalModelForId(modelName, id, clientId);
+    let internalModel = this._store._getInternalModelForId(modelName, id, clientId);
     internalModel.notifyBelongsToChange(key);
   }
 
   recordDataFor(modelName, id, clientId) {
-    return this.store.recordDataFor(modelName, id, clientId);
+    return this._store.recordDataFor(modelName, id, clientId);
   }
 
   setRecordId(modelName, id, clientId) {
-    this.store.setRecordId(modelName, id, clientId);
+    this._store.setRecordId(modelName, id, clientId);
   }
 
   isRecordInUse(modelName, id, clientId) {
-    let internalModel = this.store._getInternalModelForId(modelName, id, clientId);
+    let internalModel = this._store._getInternalModelForId(modelName, id, clientId);
     if (!internalModel) {
       return false;
     }
@@ -108,7 +108,7 @@ export default class RecordDataStoreWrapper implements IRecordDataStoreWrapper {
   }
 
   disconnectRecord(modelName, id, clientId) {
-    let internalModel = this.store._getInternalModelForId(modelName, id, clientId);
+    let internalModel = this._store._getInternalModelForId(modelName, id, clientId);
     if (internalModel) {
       internalModel.destroyFromRecordData();
     }

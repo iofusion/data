@@ -4,7 +4,7 @@ import Store from '../system/store';
 type Store = InstanceType<typeof Store>;
 
 export interface RecordDataStoreWrapper {
-  store: Store;
+  _store: Store;
   relationshipsDefinitionFor(modelName: string): RelationshipsSchema;
   attributesDefinitionFor(modelName: string): AttributesSchema;
   setRecordId(modelName: string, id: string, clientId: string): void;

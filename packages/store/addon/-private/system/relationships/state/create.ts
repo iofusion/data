@@ -36,7 +36,7 @@ export default class Relationships {
   initializedRelationships: { [key: string]: BelongsToRelationship | ManyRelationship };
   constructor(public recordData: RelationshipRecordData) {
     this.initializedRelationships = Object.create(null);
-    this._store = recordData.storeWrapper.store;
+    this._store = recordData.storeWrapper._store;
   }
 
   has(key: string) {
