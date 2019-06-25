@@ -1,35 +1,75 @@
 import { RelationshipsSchema, AttributesSchema } from './record-data-schemas';
-import Store from '../system/store';
+import { BRAND_SYMBOL } from './utils/brand';
 
-type Store = InstanceType<typeof Store>;
-
+/**
+ * Provides a encapsulated API access to a subset of store methods
+ * for RecordData implementations.
+ */
 export interface RecordDataStoreWrapper {
-  _store: Store;
+  /**
+   * @internal
+   */
+  [BRAND_SYMBOL]: 'RecordDataStoreWrapper';
+
   relationshipsDefinitionFor(modelName: string): RelationshipsSchema;
   attributesDefinitionFor(modelName: string): AttributesSchema;
+
+  /**
+   * update the `id` for the record of type `modelName` with the corresponding `clientId`
+   * This operation can only be done for records whose `id` is `null`.
+   *
+   * @param modelName
+   * @param id
+   * @param clientId
+   */
   setRecordId(modelName: string, id: string, clientId: string): void;
+
   disconnectRecord(modelName: string, id: string | null, clientId: string): void;
+  disconnectRecord(modelName: string, id: string, clientId?: string | null): void;
+  disconnectRecord(modelName: string, id: string | null, clientId?: string | null): void;
+
   isRecordInUse(modelName: string, id: string | null, clientId: string): boolean;
+  isRecordInUse(modelName: string, id: string, clientId?: string | null): boolean;
+  isRecordInUse(modelName: string, id: string | null, clientId?: string | null): boolean;
+
   notifyPropertyChange(
     modelName: string,
     id: string | null,
     clientId: string | null,
     key: string
   ): void;
-  // Needed For relationships
+
+  notifyHasManyChange(modelName: string, id: string | null, clientId: string, key: string): void;
+  notifyHasManyChange(
+    modelName: string,
+    id: string,
+    clientId: string | null | undefined,
+    key: string
+  ): void;
   notifyHasManyChange(
     modelName: string,
     id: string | null,
-    clientId: string | null,
+    clientId: string | null | undefined,
     key: string
   ): void;
+
   recordDataFor(modelName: string, id: string, clientId?: string): unknown;
+
+  notifyBelongsToChange(modelName: string, id: string | null, clientId: string, key: string): void;
+  notifyBelongsToChange(
+    modelName: string,
+    id: string,
+    clientId: string | null | undefined,
+    key: string
+  ): void;
   notifyBelongsToChange(
     modelName: string,
     id: string | null,
-    clientId: string | null,
+    clientId: string | null | undefined,
     key: string
   ): void;
+
   inverseForRelationship(modelName: string, key: string): string;
+
   inverseIsAsyncForRelationship(modelName: string, key: string): boolean;
 }

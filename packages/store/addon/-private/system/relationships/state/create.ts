@@ -3,6 +3,8 @@ import BelongsToRelationship from './belongs-to';
 import { RelationshipRecordData } from '../../../ts-interfaces/relationship-record-data';
 import { RelationshipSchema } from '../../../ts-interfaces/record-data-schemas';
 import Store from '../../store';
+import RecordDataStoreWrapper from '../../store/record-data-store-wrapper';
+import { upgradeForInternal } from '../../ts-upgrade-map';
 
 type Store = InstanceType<typeof Store>;
 
@@ -33,10 +35,12 @@ function createRelationshipFor(
 
 export default class Relationships {
   _store: Store;
+  _storeWrapper: RecordDataStoreWrapper;
   initializedRelationships: { [key: string]: BelongsToRelationship | ManyRelationship };
   constructor(public recordData: RelationshipRecordData) {
     this.initializedRelationships = Object.create(null);
-    this._store = recordData.storeWrapper._store;
+    this._storeWrapper = upgradeForInternal(recordData.storeWrapper);
+    this._store = this._storeWrapper._store;
   }
 
   has(key: string) {
