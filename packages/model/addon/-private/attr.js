@@ -147,6 +147,17 @@ export default function attr(type, options) {
           );
         }
       }
+      debugger
+      if (true) {
+        let oldValue = this._internalModel._recordData.getAttr(key);
+        if (oldValue !== value) {
+          let errors = this.get('errors');
+          if (errors.get(key)) {
+            errors.remove(key);
+          }
+          this._markInvalidRequestAsClean();
+        }
+      }
       return this._internalModel.setDirtyAttribute(key, value);
     },
   }).meta(meta);

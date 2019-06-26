@@ -2184,11 +2184,15 @@ const Store = Service.extend({
     @param {InternalModel} internalModel
     @param {Object} errors
   */
-  recordWasInvalid(internalModel, errors) {
+  recordWasInvalid(internalModel, parsedErrors, error) {
     if (DEBUG) {
       assertDestroyingStore(this, 'recordWasInvalid');
     }
-    internalModel.adapterDidInvalidate(errors);
+    if (true) {
+      internalModel.adapterDidInvalidate(parsedErrors, error);
+    } else {
+      internalModel.adapterDidInvalidate(parsedErrors);
+    }
   },
 
   /**
@@ -3272,9 +3276,8 @@ function _commit(adapter, store, operation, snapshot) {
     },
     function(error) {
       if (error instanceof InvalidError) {
-        let errors = serializer.extractErrors(store, modelClass, error, snapshot.id);
-
-        store.recordWasInvalid(internalModel, errors);
+        let parsedErrors = serializer.extractErrors(store, modelClass, error, snapshot.id);
+        store.recordWasInvalid(internalModel, parsedErrors, error);
       } else {
         store.recordWasError(internalModel, error);
       }

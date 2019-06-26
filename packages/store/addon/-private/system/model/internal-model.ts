@@ -14,13 +14,15 @@ import OrderedSet from '../ordered-set';
 import ManyArray from '../many-array';
 import { PromiseBelongsTo, PromiseManyArray } from '../promise-proxies';
 import Store from '../store';
+import { errorsHashToArray, errorsArrayToHash } from '../errors-utils';
 
 import { RecordReference, BelongsToReference, HasManyReference } from '../references';
 import { default as recordDataFor, relationshipStateFor } from '../record-data-for';
 import RecordData from '../../ts-interfaces/record-data';
-import { JsonApiResource } from '../../ts-interfaces/record-data-json-api';
+import { JsonApiResource, JsonApiValidationError } from '../../ts-interfaces/record-data-json-api';
 import { Record } from '../../ts-interfaces/record';
 import { Dict } from '../../types';
+import { parse } from 'url';
 
 // move to TS hacks module that we can delete when this is no longer a necessary recast
 type ManyArray = InstanceType<typeof ManyArray>;
@@ -245,7 +247,12 @@ export default class InternalModel {
   }
 
   isValid() {
-    return this.currentState.isValid;
+    if (false) {
+      return this.currentState.isValid;
+    } else {
+      // assert here
+    }
+
   }
 
   dirtyType() {
@@ -404,21 +411,21 @@ export default class InternalModel {
     let internalModel = this;
     let promiseLabel = 'DS: Model#reload of ' + this;
 
-    return new Promise(function(resolve) {
+    return new Promise(function (resolve) {
       internalModel.send('reloadRecord', { resolve, options });
     }, promiseLabel)
       .then(
-        function() {
+        function () {
           internalModel.didCleanError();
           return internalModel;
         },
-        function(error) {
+        function (error) {
           internalModel.didError(error);
           throw error;
         },
         'DS: Model#reload complete, update flags'
       )
-      .finally(function() {
+      .finally(function () {
         internalModel.finishedReloading();
         internalModel.updateRecordArrays();
       });
@@ -558,12 +565,12 @@ export default class InternalModel {
         let toReturn = internalModel.getRecord();
         assert(
           "You looked up the '" +
-            key +
-            "' relationship on a '" +
-            parentInternalModel.modelName +
-            "' with id " +
-            parentInternalModel.id +
-            ' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.belongsTo({ async: true })`)',
+          key +
+          "' relationship on a '" +
+          parentInternalModel.modelName +
+          "' with id " +
+          parentInternalModel.id +
+          ' but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async (`DS.belongsTo({ async: true })`)',
           toReturn === null || !toReturn.get('isEmpty')
         );
         return toReturn;
@@ -652,7 +659,7 @@ export default class InternalModel {
     } else {
       assert(
         `You looked up the '${key}' relationship on a '${this.type.modelName}' with id ${
-          this.id
+        this.id
         } but some of the associated records were not loaded. Either make sure they are all loaded together with the parent record, or specify that the relationship is async ('DS.hasMany({ async: true })')`,
         !manyArray.anyUnloaded()
       );
@@ -1229,9 +1236,13 @@ export default class InternalModel {
   }
 
   hasErrors() {
-    let errors = get(this.getRecord(), 'errors');
+    if (false) {
+      let errors = get(this.getRecord(), 'errors');
+      return errors.get('length') > 0;
+    } else {
+      return this._recordData.getErrors().length > 0;
+    }
 
-    return errors.get('length') > 0;
   }
 
   // FOR USE DURING COMMIT PROCESS
@@ -1240,19 +1251,47 @@ export default class InternalModel {
     @method adapterDidInvalidate
     @private
   */
-  adapterDidInvalidate(errors) {
-    let attribute;
+  adapterDidInvalidate(parsedErrors, error) {
+    if (false) {
+      let attribute;
 
-    for (attribute in errors) {
-      if (errors.hasOwnProperty(attribute)) {
-        this.addErrorMessageToAttribute(attribute, errors[attribute]);
+      for (attribute in parsedErrors) {
+        if (parsedErrors.hasOwnProperty(attribute)) {
+          this.addErrorMessageToAttribute(attribute, parsedErrors[attribute]);
+        }
+      }
+
+      this.send('becameInvalid');
+
+      this._recordData.commitWasRejected();
+    } else {
+      let attribute;
+      if (error && parsedErrors) {
+        let jsonApiErrors: JsonApiValidationError[] = errorsHashToArray(parsedErrors);
+        this.send('becameInvalid');
+        if (jsonApiErrors.length === 0) {
+          jsonApiErrors = [{ title: 'Invalid Error', detail: '', source: { pointer: '/data' } }];
+        }
+        this._recordData.commitWasRejected({}, jsonApiErrors);
+      } else {
+        this.send('becameError');
+        this._recordData.commitWasRejected({});
       }
     }
-
-    this.send('becameInvalid');
-
-    this._recordData.commitWasRejected();
   }
+
+  notifyErrorsChange() {
+    let jsonApiErrors = this._recordData.getErrors() || [];
+    // TODO NOW tighten this check
+    // don't think we need this
+    let invalidErrors: JsonApiValidationError[] = jsonApiErrors.filter((err) => err.source !== undefined && err.title !== undefined) as JsonApiValidationError[];
+    this.notifyInvalidErrorsChange(invalidErrors);
+  }
+
+  notifyInvalidErrorsChange(jsonApiErrors: JsonApiValidationError[]) {
+    this.getRecord().invalidErrorsChanged(jsonApiErrors);
+  }
+
 
   /*
     @method adapterDidError
@@ -1349,7 +1388,7 @@ function assertRecordsPassedToHasMany(records) {
     `All elements of a hasMany relationship must be instances of Model, you passed ${inspect(
       records
     )}`,
-    (function() {
+    (function () {
       return A(records).every(record => record.hasOwnProperty('_internalModel') === true);
     })()
   );

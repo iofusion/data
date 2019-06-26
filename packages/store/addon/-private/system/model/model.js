@@ -5,6 +5,8 @@ import EmberObject, { computed, get } from '@ember/object';
 import { DEBUG } from '@glimmer/env';
 import { assert, warn, deprecate } from '@ember/debug';
 import { PromiseObject } from '../promise-proxies';
+import { errorsArrayToHash } from '../errors-utils';
+import { InvalidError } from '@ember-data/adapter/error';
 import Errors from '../model/errors';
 import {
   relationshipsByNameDescriptor,
@@ -33,14 +35,14 @@ function findPossibleInverses(type, inverseType, name, relationshipsSoFar) {
   let relationshipsForType = relationshipMap.get(type.modelName);
   let relationships = Array.isArray(relationshipsForType)
     ? relationshipsForType.filter(relationship => {
-        let optionsForRelationship = inverseType.metaForProperty(relationship.name).options;
+      let optionsForRelationship = inverseType.metaForProperty(relationship.name).options;
 
-        if (!optionsForRelationship.inverse && optionsForRelationship.inverse !== null) {
-          return true;
-        }
+      if (!optionsForRelationship.inverse && optionsForRelationship.inverse !== null) {
+        return true;
+      }
 
-        return name === optionsForRelationship.inverse;
-      })
+      return name === optionsForRelationship.inverse;
+    })
     : null;
 
   if (relationships) {
@@ -55,10 +57,16 @@ function findPossibleInverses(type, inverseType, name, relationshipsSoFar) {
   return possibleRelationships;
 }
 
-const retrieveFromCurrentState = computed('currentState', function(key) {
+const retrieveFromCurrentState = computed('currentState', function (key) {
   return get(this._internalModel.currentState, key);
 }).readOnly();
 
+const isValidRecordData = computed('errors.length', function (key) {
+  debugger
+  return !(this.get('errors.length') > 0);
+}).readOnly();
+
+const isValid = true ? isValidRecordData : retrieveFromCurrentState;
 /**
 
   The model class that all Ember Data records descend from.
@@ -70,6 +78,18 @@ const retrieveFromCurrentState = computed('currentState', function(key) {
   @uses Ember.Evented
 */
 const Model = EmberObject.extend(Evented, {
+
+  init() {
+    this._super(...arguments);
+    if (true) {
+      this._invalidRequests = [];
+    }
+  },
+
+  _notifyNetworkChanges: function() {
+    this.notifyPropertyChange('isValid');
+  },
+
   /**
     If this property is `true` the record is in the `empty`
     state. Empty is the first state all records enter after they have
@@ -141,7 +161,7 @@ const Model = EmberObject.extend(Evented, {
     @type {Boolean}
     @readOnly
   */
-  hasDirtyAttributes: computed('currentState.isDirty', function() {
+  hasDirtyAttributes: computed('currentState.isDirty', function () {
     return this.get('currentState.isDirty');
   }),
   /**
@@ -237,7 +257,15 @@ const Model = EmberObject.extend(Evented, {
     @type {Boolean}
     @readOnly
   */
-  isValid: retrieveFromCurrentState,
+  isValid: isValid,
+
+  _markInvalidRequestAsClean() {
+    if (true) {
+      this._invalidRequests = [];
+      this._notifyNetworkChanges();
+    }
+  },
+
   /**
     If the record is in the dirty state this property will report what
     kind of change has caused it to move into the dirty
@@ -395,20 +423,56 @@ const Model = EmberObject.extend(Evented, {
     @property errors
     @type {Errors}
   */
-  errors: computed(function() {
+  errors: computed(function () {
+
     let errors = Errors.create();
 
     errors._registerHandlers(
       this._internalModel,
-      function() {
+      function () {
         this.send('becameInvalid');
       },
-      function() {
+      function () {
         this.send('becameValid');
       }
     );
+    if (true) {
+      let recordData = recordDataFor(this);
+      let jsonApiErrors;
+      if (recordData.getErrors) {
+        jsonApiErrors = recordData.getErrors();
+        if (jsonApiErrors) {
+          let errorsHash = errorsArrayToHash(jsonApiErrors);
+          let errorKeys = Object.keys(errorsHash);
+
+          for (let i = 0; i < errorKeys.length; i++) {
+            errors._add(errorKeys[i], errorsHash[errorKeys[i]]);
+          }
+        }
+      }
+    }
     return errors;
   }).readOnly(),
+
+  invalidErrorsChanged(jsonApiErrors) {
+    if (true) {
+      this._clearErrorMessages();
+      let errors = errorsArrayToHash(jsonApiErrors);
+      let errorKeys = Object.keys(errors);
+
+      for (let i = 0; i < errorKeys.length; i++) {
+        this._addErrorMessageToAttribute(errorKeys[i], errors[errorKeys[i]]);
+      }
+    }
+  },
+
+  _addErrorMessageToAttribute(attribute, message) {
+    this.get('errors')._add(attribute, message);
+  },
+
+  _clearErrorMessages() {
+    this.get('errors')._clear();
+  },
 
   /**
     This property holds the `AdapterError` object with which
@@ -714,6 +778,9 @@ const Model = EmberObject.extend(Evented, {
   */
   rollbackAttributes() {
     this._internalModel.rollbackAttributes();
+    if (true) {
+      this._markInvalidRequestAsClean();
+    }
   },
 
   /*
@@ -1320,7 +1387,7 @@ Model.reopenClass({
     return relationship && store.modelFor(relationship.type);
   },
 
-  inverseMap: computed(function() {
+  inverseMap: computed(function () {
     return Object.create(null);
   }),
 
@@ -1390,10 +1457,10 @@ Model.reopenClass({
 
       assert(
         "We found no inverse relationships by the name of '" +
-          inverseName +
-          "' on the '" +
-          inverseType.modelName +
-          "' model. This is most likely due to a missing attribute on your model definition.",
+        inverseName +
+        "' on the '" +
+        inverseType.modelName +
+        "' model. This is most likely due to a missing attribute on your model definition.",
         !isNone(inverse)
       );
 
@@ -1425,12 +1492,12 @@ Model.reopenClass({
 
       assert(
         "You defined the '" +
-          name +
-          "' relationship on " +
-          this +
-          ', but you defined the inverse relationships of type ' +
-          inverseType.toString() +
-          ' multiple times. Look at https://guides.emberjs.com/current/models/relationships/#toc_explicit-inverses for how to explicitly specify inverses',
+        name +
+        "' relationship on " +
+        this +
+        ', but you defined the inverse relationships of type ' +
+        inverseType.toString() +
+        ' multiple times. Look at https://guides.emberjs.com/current/models/relationships/#toc_explicit-inverses for how to explicitly specify inverses',
         filteredRelationships.length < 2
       );
 
@@ -1440,14 +1507,14 @@ Model.reopenClass({
 
       assert(
         "You defined the '" +
-          name +
-          "' relationship on " +
-          this +
-          ', but multiple possible inverse relationships of type ' +
-          this +
-          ' were found on ' +
-          inverseType +
-          '. Look at https://guides.emberjs.com/current/models/relationships/#toc_explicit-inverses for how to explicitly specify inverses',
+        name +
+        "' relationship on " +
+        this +
+        ', but multiple possible inverse relationships of type ' +
+        this +
+        ' were found on ' +
+        inverseType +
+        '. Look at https://guides.emberjs.com/current/models/relationships/#toc_explicit-inverses for how to explicitly specify inverses',
         possibleRelationships.length === 1
       );
 
@@ -1546,7 +1613,7 @@ Model.reopenClass({
    @type Object
    @readOnly
    */
-  relationshipNames: computed(function() {
+  relationshipNames: computed(function () {
     let names = {
       hasMany: [],
       belongsTo: [],
@@ -1677,7 +1744,7 @@ Model.reopenClass({
    @type Map
    @readOnly
    */
-  fields: computed(function() {
+  fields: computed(function () {
     let map = new Map();
 
     this.eachComputedProperty((name, meta) => {
@@ -1786,14 +1853,14 @@ Model.reopenClass({
    @type {Map}
    @readOnly
    */
-  attributes: computed(function() {
+  attributes: computed(function () {
     let map = new Map();
 
     this.eachComputedProperty((name, meta) => {
       if (meta.isAttribute) {
         assert(
           "You may not set `id` as an attribute on your model. Please remove any lines that look like: `id: attr('<type>')` from " +
-            this.toString(),
+          this.toString(),
           name !== 'id'
         );
 
@@ -1843,7 +1910,7 @@ Model.reopenClass({
    @type {Map}
    @readOnly
    */
-  transformedAttributes: computed(function() {
+  transformedAttributes: computed(function () {
     let map = new Map();
 
     this.eachAttribute((key, meta) => {
